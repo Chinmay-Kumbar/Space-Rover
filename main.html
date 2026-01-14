@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Space Explorer Rover - Thermal Control Dashboard</title>
+
+<style>
+* { box-sizing: border-box; font-family: Arial, sans-serif; }
+
+body {
+  margin: 0;
+  background: linear-gradient(135deg, #020617, #0f172a);
+  color: #e5e7eb;
+}
+
+header {
+  padding: 18px 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #1e293b;
+}
+
+header h1 { color: #f97316; font-size: 22px; }
+
+.status {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-weight: bold;
+}
+
+.stable { background: #22c55e; color: #022c22; }
+.warning { background: #facc15; color: #422006; }
+.critical { background: #ef4444; color: white; }
+
+.banner {
+  margin: 20px;
+  padding: 16px;
+  border-radius: 12px;
+  background: #020617;
+  border: 1px solid #1e293b;
+  text-align: center;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  padding: 20px;
+}
+
+.card {
+  background: #020617;
+  border: 1px solid #1e293b;
+  border-radius: 14px;
+  padding: 20px;
+}
+
+.card h2 { color: #22c55e; }
+
+.value { font-size: 28px; margin: 10px 0; }
+
+input[type="range"] { width: 100%; }
+
+button {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+.off { background: #334155; color: #e5e7eb; }
+.on { background: #ef4444; color: white; }
+.override { background: #8b5cf6; color: white; }
+
+.log {
+  margin: 20px;
+  padding: 16px;
+  background: #020617;
+  border-radius: 14px;
+  border: 1px solid #1e293b;
+  max-height: 220px;
+  overflow-y: auto;
+  font-size: 14px;
+}
+
+.log-entry { margin-bottom: 6px; }
+.normal { color: #22c55e; }
+.warn { color: #facc15; }
+.crit { color: #ef4444; }
+
+@media (max-width: 900px) {
+  .grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>🛰️ Space Explorer Rover – Thermal Control</h1>
+  <div class="status stable" id="globalStatus">STABLE</div>
+</header>
+
+<div class="banner" id="banner">
+  Autonomous thermal control active. Rover operating normally.
+</div>
+
+<div class="grid">
+
+  <!-- Temperature -->
+  <div class="card">
+    <h2>Rover Surface Temperature</h2>
+    <div class="value" id="tempDisplay">22°C</div>
+    <input type="range" min="0" max="80" value="22" id="tempSlider">
+    <p>Warning: > 35°C | Critical: > 50°C</p>
+  </div>
+
+  <!-- Mode -->
+  <div class="card">
+    <h2>Control Mode</h2>
+    <button class="override" id="modeBtn">AUTOMATIC MODE</button>
+    <p id="modeInfo">System decisions are autonomous</p>
+  </div>
+
+  <!-- Controls -->
+  <div class="card">
+    <h2>Thermal Actuators</h2>
+    <button class="off" id="coolingBtn">Cooling System: OFF</button>
+    <button class="off" id="shieldBtn">Thermal Shield: RETRACTED</button>
+  </div>
+
+</div>
+
+<div class="log" id="log">
+  <div class="log-entry normal">[System] Rover thermal system initialized.</div>
+</div>
+
+<script>
+const slider = document.getElementById("tempSlider");
+const tempDisplay = document.getElementById("tempDisplay");
+const status = document.getElementById("globalStatus");
+const banner = document.getElementById("banner");
+const log = document.getElementById("log");
+
+const coolingBtn = document.getElementById("coolingBtn");
+const shieldBtn = document.getElementById("shieldBtn");
+const modeBtn = document.getElementById("modeBtn");
+const modeInfo = document.getElementById("modeInfo");
+
+let cooling = false;
+let shield = false;
+let manualOverride = false;
+
+function logEvent(msg, type="normal") {
+  const e = document.createElement("div");
+  e.className = `log-entry ${type}`;
+  e.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  log.prepend(e);
+}
+
+function setCooling(state, auto=true) {
+  cooling = state;
+  coolingBtn.textContent = `Cooling System: ${state ? "ON" : "OFF"}`;
+  coolingBtn.className = state ? "on" : "off";
+  logEvent(`${auto ? "AUTO" : "MANUAL"}: Cooling system ${state ? "activated" : "deactivated"}.`);
+}
+
+function setShield(state, auto=true) {
+  shield = state;
+  shieldBtn.textContent = `Thermal Shield: ${state ? "DEPLOYED" : "RETRACTED"}`;
+  shieldBtn.className = state ? "on" : "off";
+  logEvent(`${auto ? "AUTO" : "MANUAL"}: Thermal shield ${state ? "deployed" : "retracted"}.`);
+}
+
+function updateSystem() {
+  const t = parseInt(slider.value);
+  tempDisplay.textContent = `${t}°C`;
+
+  if (!manualOverride) {
+    if (t > 50) {
+      status.textContent = "CRITICAL";
+      status.className = "status critical";
+      banner.textContent = "CRITICAL OVERHEAT! Rover entering SAFE MODE.";
+      setCooling(true);
+      setShield(true);
+    } else if (t > 35) {
+      status.textContent = "WARNING";
+      status.className = "status warning";
+      banner.textContent = "Thermal warning. Cooling system engaged.";
+      setCooling(true);
+      setShield(false);
+    } else {
+      status.textContent = "STABLE";
+      status.className = "status stable";
+      banner.textContent = "Thermal conditions stable. Normal rover operation.";
+      setCooling(false);
+      setShield(false);
+    }
+  }
+}
+
+slider.oninput = updateSystem;
+
+modeBtn.onclick = () => {
+  manualOverride = !manualOverride;
+  modeBtn.textContent = manualOverride ? "HUMAN OVERRIDE ACTIVE" : "AUTOMATIC MODE";
+  modeInfo.textContent = manualOverride
+    ? "Operator manually controls thermal actuators"
+    : "System decisions are autonomous";
+  logEvent(`Control mode switched to ${manualOverride ? "MANUAL OVERRIDE" : "AUTOMATIC"}.`, "warn");
+};
+
+coolingBtn.onclick = () => {
+  if (manualOverride) setCooling(!cooling, false);
+};
+
+shieldBtn.onclick = () => {
+  if (manualOverride) setShield(!shield, false);
+};
+</script>
+
+</body>
+</html>
